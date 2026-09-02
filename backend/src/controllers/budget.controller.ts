@@ -63,9 +63,17 @@ export const updateTransaction = async (req: Request, res: Response, next: NextF
       return;
     }
 
+    const { type, category, amount, description, date } = req.body;
+
     const updated = await prisma.budgetTransaction.update({
       where: { id },
-      data: req.body,
+      data: {
+        ...(type !== undefined && { type }),
+        ...(category !== undefined && { category }),
+        ...(amount !== undefined && { amount }),
+        ...(description !== undefined && { description }),
+        ...(date !== undefined && { date: new Date(date) }),
+      },
     });
 
     res.json({ success: true, message: 'İşlem güncellendi.', data: updated });

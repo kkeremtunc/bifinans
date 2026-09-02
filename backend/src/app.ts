@@ -9,6 +9,9 @@ import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
 
+// Trust proxy - sadece localhost/loopback proxy'leri güven: IP sahteciliği önleme
+app.set('trust proxy', 'loopback');
+
 // Security Middlewares
 app.use(helmet());
 app.use(
@@ -20,8 +23,8 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(cookieParser());
 
 // Rate Limiting
@@ -29,7 +32,7 @@ app.use('/api', apiRateLimiter);
 
 // Base Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString(), env: env.NODE_ENV });
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
 // API Routes

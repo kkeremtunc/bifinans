@@ -127,22 +127,6 @@ export const RegisterPage: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-                Kullanıcı Rolü (Test için Seçilebilir)
-              </label>
-              <select
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-blue-500"
-              >
-                <option value="STANDART_KULLANICI">Standart Kullanıcı</option>
-                <option value="ICERIK_YONETICI">İçerik Yöneticisi</option>
-                <option value="BIRIM_YONETICI">Birim Yöneticisi</option>
-                <option value="GENEL_KOORDINATOR">Genel Koordinatör</option>
-                <option value="SUPER_ADMIN">Süper Admin</option>
-              </select>
-            </div>
 
             <label className="flex items-start gap-2 p-3 mt-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/50 hover:bg-slate-200/50 dark:bg-slate-800/50 transition-colors">
               <input

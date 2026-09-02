@@ -59,9 +59,6 @@ export const updateAsset = async (req: Request, res: Response, next: NextFunctio
     const userId = req.user!.userId;
     const { id } = req.params;
 
-    const fs = require('fs');
-    fs.appendFileSync('c:\\Users\\kerem.DESKTOP-COJ8PJ5\\Desktop\\Staj\\antigravity\\borsauygulama\\backend\\debug.log', `[UPDATE_ASSET] id: ${id}, userId: ${userId}, body: ${JSON.stringify(req.body)}\n`);
-
     const existing = await prisma.asset.findFirst({
       where: { id, userId },
     });
@@ -71,9 +68,17 @@ export const updateAsset = async (req: Request, res: Response, next: NextFunctio
       return;
     }
 
+    const { assetType, symbol, amount, averageCost, currentPrice } = req.body;
+
     const updated = await prisma.asset.update({
       where: { id },
-      data: req.body,
+      data: {
+        ...(assetType !== undefined && { assetType }),
+        ...(symbol !== undefined && { symbol: String(symbol).toUpperCase() }),
+        ...(amount !== undefined && { amount }),
+        ...(averageCost !== undefined && { averageCost }),
+        ...(currentPrice !== undefined && { currentPrice }),
+      },
     });
 
     res.json({ success: true, message: 'Varlık güncellendi.', data: updated });

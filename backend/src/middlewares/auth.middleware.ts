@@ -27,6 +27,15 @@ export const authenticateToken = async (
     return;
   }
 
+  // 2FA Geçici Jetonu ile yetkisiz erişimi engelleme (2FA Bypass Koruması)
+  if ((payload as any).type === '2FA_TEMP' || !payload.role || !payload.status) {
+    res.status(401).json({
+      success: false,
+      message: 'Tamamlanmamış oturum. Lütfen önce iki adımlı doğrulamayı (2FA) tamamlayınız.',
+    });
+    return;
+  }
+
   if (payload.status === 'PASSIVE') {
     res.status(403).json({ success: false, message: 'Hesabınız pasif durumdadır. Yönetici onayı gereklidir.' });
     return;

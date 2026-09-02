@@ -9,7 +9,10 @@ export const errorHandler = (
   console.error('Unhandled Server Error:', err);
 
   const statusCode = err.statusCode || 500;
-  const message = err.message || 'Sunucu içi beklenmeyen bir hata oluştu.';
+  const message =
+    statusCode >= 500 && process.env.NODE_ENV === 'production'
+      ? 'Sunucu içi beklenmeyen bir hata oluştu.'
+      : err.message || 'Bir hata oluştu.';
 
   res.status(statusCode).json({
     success: false,

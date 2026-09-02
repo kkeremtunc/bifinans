@@ -37,6 +37,14 @@ router.put(
   contentController.approveContent
 );
 
+// Unit Managers and Super Admin can unapprove bulletins back to draft (Symmetric Action)
+router.put(
+  '/:id/unapprove',
+  requireRoles('BIRIM_YONETICI', 'SUPER_ADMIN'),
+  logAudit('UPDATE', 'ContentItemUnapprove'),
+  contentController.unapproveContent
+);
+
 // Content Managers, Unit Managers, and Super Admin can delete bulletins
 router.delete(
   '/:id',

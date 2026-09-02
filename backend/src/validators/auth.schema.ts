@@ -10,10 +10,10 @@ export const Role = {
 
 export const registerSchema = z.object({
   email: z.string().email('Geçerli bir e-posta adresi giriniz'),
-  password: z.string().min(6, 'Şifre en az 6 karakter olmalıdır'),
+  password: z.string().min(8, 'Şifre en az 8 karakter olmalıdır'),
   name: z.string().min(2, 'Ad en az 2 karakter olmalıdır'),
   surname: z.string().min(2, 'Soyad en az 2 karakter olmalıdır'),
-  role: z.enum(['STANDART_KULLANICI', 'ICERIK_YONETICI', 'BIRIM_YONETICI', 'GENEL_KOORDINATOR', 'SUPER_ADMIN']).optional(),
+  // role alanı kasıtlı olarak hariç tutulmuştur. Kullanıcı rolü yalnızca Super Admin panelinden değiştirilebilir.
 });
 
 export const loginSchema = z.object({

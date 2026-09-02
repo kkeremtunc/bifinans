@@ -48,6 +48,18 @@ export const respondTicket = async (req: Request, res: Response, next: NextFunct
     const { id } = req.params;
     const { response, status } = req.body;
 
+    const existing = await prisma.supportTicket.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Destek bileti bulunamadı.' });
+      return;
+    }
+
+    // Zaten kapatılmış biletlere yanıt verilemez
+    if (existing.status === 'CLOSED') {
+      res.status(400).json({ success: false, message: 'Kapatılmış (CLOSED) biletler tekrar yanıtlanamaz.' });
+      return;
+    }
+
     const updated = await prisma.supportTicket.update({
       where: { id },
       data: {

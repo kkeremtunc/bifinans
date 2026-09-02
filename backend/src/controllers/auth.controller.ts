@@ -6,6 +6,7 @@ import { redis } from '../config/redis';
 import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 import jwt from 'jsonwebtoken';
+import { env } from '../config/env';
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
 
@@ -24,7 +25,7 @@ export const UserStatus = {
 
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { email, password, name, surname, role } = req.body;
+    const { email, password, name, surname } = req.body;
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -33,7 +34,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     }
 
     const passwordHash = await hashPassword(password);
-    const assignedRole = role && Object.values(Role).includes(role as any) ? role : Role.STANDART_KULLANICI;
+    const assignedRole = Role.STANDART_KULLANICI;
 
     const user = await prisma.user.create({
       data: {
@@ -90,8 +91,8 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     }
 
     if (user.isTwoFactorEnabled) {
-      const tempPayload = { userId: user.id };
-      const tempToken = jwt.sign(tempPayload, process.env.JWT_ACCESS_SECRET!, { expiresIn: '15m' });
+      const tempPayload = { userId: user.id, type: '2FA_TEMP' };
+      const tempToken = jwt.sign(tempPayload, env.JWT_ACCESS_SECRET, { expiresIn: '15m', algorithm: 'HS256' });
       res.json({
         success: true,
         message: '2 Adımlı doğrulama gerekli.',
@@ -168,8 +169,21 @@ export const refresh = async (req: Request, res: Response, next: NextFunction): 
       include: { user: true },
     });
 
-    if (!savedToken || savedToken.revokedAt || savedToken.expiresAt < new Date()) {
-      res.status(401).json({ success: false, message: 'Yenileme jetonu iptal edilmiş veya geçerliliğini yitirmiş.' });
+    if (!savedToken || savedToken.expiresAt < new Date()) {
+      res.status(401).json({ success: false, message: 'Yenileme jetonu bulunamadı veya süresi dolmuş.' });
+      return;
+    }
+
+    // Yeniden Kullanım Tespiti (Automatic Reuse Detection): İptal edilmiş token tekrar kullanılırsa tüm oturumları sonlandır!
+    if (savedToken.revokedAt) {
+      await prisma.refreshToken.updateMany({
+        where: { userId: savedToken.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      res.status(401).json({
+        success: false,
+        message: 'Güvenlik Uyarısı: İptal edilmiş bir yenileme jetonu tekrar kullanılmaya çalışıldı. Olası yetkisiz erişim nedeniyle tüm oturumlarınız kapatıldı.',
+      });
       return;
     }
 
@@ -185,7 +199,32 @@ export const refresh = async (req: Request, res: Response, next: NextFunction): 
       status: savedToken.user.status as any,
     };
 
+    // Refresh Token Rotation: Eski token iptal edilir ve yeni bir refreshToken üretilir
+    await prisma.refreshToken.update({
+      where: { id: savedToken.id },
+      data: { revokedAt: new Date() },
+    });
+
     const newAccessToken = generateAccessToken(newPayload);
+    const newRefreshToken = generateRefreshToken(newPayload);
+
+    const newExpiresAt = new Date();
+    newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+
+    await prisma.refreshToken.create({
+      data: {
+        userId: savedToken.user.id,
+        token: newRefreshToken,
+        expiresAt: newExpiresAt,
+      },
+    });
+
+    res.cookie(REFRESH_COOKIE_NAME, newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     res.json({
       success: true,
@@ -302,11 +341,23 @@ export const verify2FALogin = async (req: Request, res: Response, next: NextFunc
       return;
     }
 
+    // Tek Kullanımlık 2FA Kontrolü (Replay Attack Koruması)
+    const isAlreadyUsed = await redis.get(`used_2fa_${tempToken}`);
+    if (isAlreadyUsed) {
+      res.status(401).json({ success: false, message: 'Bu geçici doğrulama jetonu daha önce kullanılmış.' });
+      return;
+    }
+
     let payload: any;
     try {
-      payload = jwt.verify(tempToken, process.env.JWT_ACCESS_SECRET!);
+      payload = jwt.verify(tempToken, env.JWT_ACCESS_SECRET, { algorithms: ['HS256'] });
     } catch (e) {
       res.status(401).json({ success: false, message: 'Geçersiz veya süresi dolmuş token.' });
+      return;
+    }
+
+    if (payload.type !== '2FA_TEMP') {
+      res.status(401).json({ success: false, message: 'Geçersiz 2FA geçici yetkilendirme jetonu.' });
       return;
     }
 
@@ -321,6 +372,9 @@ export const verify2FALogin = async (req: Request, res: Response, next: NextFunc
       res.status(401).json({ success: false, message: 'Geçersiz doğrulama kodu.' });
       return;
     }
+
+    // Başarılı doğrulama sonrası geçici jetonu kullanılmış olarak işaretle
+    await redis.set(`used_2fa_${tempToken}`, 'true', 15 * 60);
 
     const userPayload = {
       userId: user.id,

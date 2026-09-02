@@ -67,6 +67,38 @@ export const updateUserRoleAndStatus = async (req: Request, res: Response, next:
   try {
     const { userId, role, status } = req.body;
 
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!targetUser) {
+      res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
+      return;
+    }
+
+    // 1. Kendi yetkisini düşürme veya kendi hesabını pasife alma koruması (Self-lockout)
+    if (req.user?.userId === userId) {
+      if (role && role !== 'SUPER_ADMIN') {
+        res.status(400).json({ success: false, message: 'Güvenlik kuralı: Kendi Süper Admin rolünüzü kaldıramazsınız.' });
+        return;
+      }
+      if (status && status === 'PASSIVE') {
+        res.status(400).json({ success: false, message: 'Güvenlik kuralı: Kendi hesabınızı pasife alamazsınız.' });
+        return;
+      }
+    }
+
+    // 2. Sistemdeki son aktif Süper Admin'in düşürülmesini veya pasife alınmasını engelle
+    if (targetUser.role === 'SUPER_ADMIN' && ((role && role !== 'SUPER_ADMIN') || (status && status === 'PASSIVE'))) {
+      const activeSuperAdminCount = await prisma.user.count({
+        where: { role: 'SUPER_ADMIN', status: 'ACTIVE' },
+      });
+      if (activeSuperAdminCount <= 1) {
+        res.status(400).json({
+          success: false,
+          message: 'Sistemde en az 1 aktif Süper Admin bulunmalıdır. Son Süper Admin rolü düşürülemez veya pasife alınamaz.',
+        });
+        return;
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
       data: {
