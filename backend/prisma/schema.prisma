@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  passwordHash String
+  name         String
+  surname      String
+  role         String       @default("STANDART_KULLANICI")
+  status       String       @default("ACTIVE")
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  disclaimerAccepted Boolean      @default(false)
+  twoFactorSecret    String?
+  isTwoFactorEnabled Boolean      @default(false)
+
+  refreshTokens      RefreshToken[]
+  assets             Asset[]
+  budgetTransactions BudgetTransaction[]
+  auditLogs          AuditLog[]
+  contentItems       ContentItem[]       @relation("AuthorContents")
+  approvedContents   ContentItem[]       @relation("ApprovedContents")
+  supportTickets     SupportTicket[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Asset {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetType    String
+  symbol       String
+  amount       Float
+  averageCost  Float
+  currentPrice Float
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model BudgetTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String
+  category    String
+  amount      Float
+  description String
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action       String
+  targetEntity String
+  targetId     String?
+  ipAddress    String
+  userAgent    String
+  details      String?
+  createdAt    DateTime @default(now())
+}
+
+model ContentItem {
+  id           String   @id @default(uuid())
+  authorId     String
+  author       User     @relation("AuthorContents", fields: [authorId], references: [id])
+  title        String
+  summary      String
+  content      String
+  category     String
+  isApproved   Boolean  @default(false)
+  approvedById String?
+  approvedBy   User?    @relation("ApprovedContents", fields: [approvedById], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SupportTicket {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  message   String
+  category  String
+  status    String   @default("OPEN")
+  response  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
