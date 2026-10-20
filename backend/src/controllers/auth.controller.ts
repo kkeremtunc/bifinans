@@ -134,6 +134,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       success: true,
       message: 'Giriş başarılı.',
       accessToken,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -229,6 +230,7 @@ export const refresh = async (req: Request, res: Response, next: NextFunction): 
     res.json({
       success: true,
       accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
       user: {
         id: savedToken.user.id,
         email: savedToken.user.email,
@@ -408,6 +410,7 @@ export const verify2FALogin = async (req: Request, res: Response, next: NextFunc
       success: true,
       message: 'Giriş başarılı.',
       accessToken,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -500,6 +503,65 @@ export const disable2FA = async (req: Request, res: Response, next: NextFunction
     });
 
     res.json({ success: true, message: '2 Adımlı Doğrulama başarıyla kapatıldı.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { password } = req.body;
+    const userId = req.user!.userId;
+
+    if (!password) {
+      res.status(400).json({ success: false, message: 'Hesabınızı silmek için mevcut şifrenizi girmelisiniz.' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
+      return;
+    }
+
+    const isMatch = await comparePassword(password, user.passwordHash);
+    if (!isMatch) {
+      res.status(401).json({ success: false, message: 'Hatalı şifre girdiniz. Hesap silme işlemi iptal edildi.' });
+      return;
+    }
+
+    // Kullanıcının yazdığı içerikleri sil
+    await prisma.contentItem.deleteMany({
+      where: { authorId: user.id }
+    });
+
+    // Kullanıcının onayladığı içeriklerde onaylayıcı bilgisini kaldır
+    await prisma.contentItem.updateMany({
+      where: { approvedById: user.id },
+      data: { approvedById: null }
+    });
+
+    // Refresh token çerezini temizle
+    res.clearCookie(REFRESH_COOKIE_NAME, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+
+    // Access token'ı kara listeye al
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+    if (token) {
+      // redis'e 'bl_token' key'i ile ekle (set methodu ioredis/custom class parametreleri)
+      await redis.set(`bl_${token}`, 'true', 15 * 60); 
+    }
+
+    // Kullanıcıyı sil (assets, transactions vb. veritabanı kuralı gereği otomatik silinir - Cascade)
+    await prisma.user.delete({
+      where: { id: user.id }
+    });
+
+    res.json({ success: true, message: 'Hesabınız ve tüm verileriniz başarıyla silindi.' });
   } catch (error) {
     next(error);
   }

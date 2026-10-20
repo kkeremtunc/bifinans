@@ -1,16 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAuth } from '../../context/AuthContext.js';
-import { LogOut, User as UserIcon, ShieldCheck, Bell, Sun, Moon } from 'lucide-react';
+import { LogOut, User as UserIcon, ShieldCheck, Bell, Sun, Moon, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
-import { SettingsModal } from '../common/SettingsModal';
-import { Settings } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const [showSettings, setShowSettings] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -35,13 +32,13 @@ export const Navbar: React.FC = () => {
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        {/* Settings Toggle */}
+        {/* Profile Button */}
         <button
-          onClick={() => setShowSettings(true)}
+          onClick={() => navigate('/profile')}
           className="p-2 text-slate-500 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg transition-colors"
-          title="Güvenlik Ayarları"
+          title="Profil ve Güvenlik Ayarları"
         >
-          <Settings className="w-4 h-4" />
+          <User className="w-4 h-4" />
         </button>
 
         {/* Security / Role Indicator */}
@@ -52,9 +49,13 @@ export const Navbar: React.FC = () => {
 
         {/* User Info & Logout Button */}
         <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800">
-          <div className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-xs">
+          <button
+            onClick={() => navigate('/profile')}
+            className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-xs hover:bg-blue-600/30 transition-colors"
+            title="Profile Git"
+          >
             {user?.name?.[0]}{user?.surname?.[0]}
-          </div>
+          </button>
 
           <button
             onClick={handleLogout}
@@ -67,7 +68,6 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </header>
   );
 };

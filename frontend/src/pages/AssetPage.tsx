@@ -108,6 +108,7 @@ export const AssetPage: React.FC = () => {
     customSymbolInput: '',
     amount: '',
     averageCost: '',
+    totalCost: '',
   });
 
   useEffect(() => {
@@ -151,7 +152,15 @@ export const AssetPage: React.FC = () => {
     if (currentSymbol && marketPrices) {
       const matched = marketPrices.find(p => p.symbol === currentSymbol);
       if (matched && matched.price) {
-        setFormData(prev => ({ ...prev, averageCost: matched.price.toString() }));
+        setFormData(prev => {
+          const newCost = matched.price;
+          const parsedAmount = parseFloat(prev.amount);
+          let newTotal = prev.totalCost;
+          if (!isNaN(parsedAmount)) {
+            newTotal = (parsedAmount * newCost).toFixed(2);
+          }
+          return { ...prev, averageCost: newCost.toString(), totalCost: newTotal };
+        });
       }
     }
   }, [formData.assetType, formData.symbol, formData.isCustomSymbol, formData.customSymbolInput, marketPrices]);
@@ -180,6 +189,7 @@ export const AssetPage: React.FC = () => {
         customSymbolInput: '',
         amount: '',
         averageCost: '',
+        totalCost: '',
       });
     },
   });
@@ -284,6 +294,36 @@ export const AssetPage: React.FC = () => {
     percent: totalPortfolioVal > 0 ? ((value / totalPortfolioVal) * 100).toFixed(1) : '0',
     type,
   }));
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    const cost = parseFloat(formData.averageCost);
+    if (!isNaN(cost) && val) {
+      setFormData(prev => ({ ...prev, amount: val, totalCost: (parseFloat(val) * cost).toFixed(2) }));
+    } else {
+      setFormData(prev => ({ ...prev, amount: val, totalCost: '' }));
+    }
+  };
+
+  const handleAverageCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    const amount = parseFloat(formData.amount);
+    if (!isNaN(amount) && val) {
+      setFormData(prev => ({ ...prev, averageCost: val, totalCost: (amount * parseFloat(val)).toFixed(2) }));
+    } else {
+      setFormData(prev => ({ ...prev, averageCost: val }));
+    }
+  };
+
+  const handleTotalCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    const cost = parseFloat(formData.averageCost);
+    if (!isNaN(cost) && cost > 0 && val) {
+      setFormData(prev => ({ ...prev, totalCost: val, amount: (parseFloat(val) / cost).toFixed(4) }));
+    } else {
+      setFormData(prev => ({ ...prev, totalCost: val, amount: '' }));
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -693,7 +733,7 @@ export const AssetPage: React.FC = () => {
                   step="0.0001"
                   required
                   value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  onChange={handleAmountChange}
                   placeholder="Örn: 10 gram veya 5 adet"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono focus:border-emerald-500 focus:outline-none"
                 />
@@ -714,12 +754,29 @@ export const AssetPage: React.FC = () => {
                   step="0.01"
                   required
                   value={formData.averageCost}
-                  onChange={(e) => setFormData({ ...formData, averageCost: e.target.value })}
+                  onChange={handleAverageCostChange}
                   placeholder="0.00"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono focus:border-emerald-500 focus:outline-none"
                 />
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                   💡 Sitedeki anlık kur otomatik dolduruldu. Varlığı geçmişte farklı fiyattan aldıysanız bu değeri değiştirebilirsiniz.
+                </p>
+              </div>
+
+              {/* 5. Toplam Ödenen Tutar */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">5. Toplam Ödenen Tutar (₺)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={formData.totalCost}
+                  onChange={handleTotalCostChange}
+                  placeholder="Örn: 1500.00"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/30 text-slate-900 dark:text-white text-xs font-mono font-bold focus:border-emerald-500 focus:outline-none"
+                />
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  💡 Miktarı veya toplam tutarı girdiğinizde diğeri otomatik hesaplanır.
                 </p>
               </div>
 

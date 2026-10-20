@@ -16,7 +16,14 @@ app.set('trust proxy', 'loopback');
 app.use(helmet());
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      // Allow mobile apps (which often send undefined origin) and dev clients
+      if (!origin || process.env.NODE_ENV !== 'production' || origin === env.FRONTEND_URL) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

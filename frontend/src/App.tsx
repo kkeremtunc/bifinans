@@ -17,6 +17,7 @@ import { LiveMarketPage } from './pages/LiveMarketPage';
 import { MarketDetailPage } from './pages/MarketDetailPage';
 import { AiAnalysisPage } from './pages/AiAnalysisPage';
 import { ComparePage } from './pages/ComparePage';
+import { ProfilePage } from './pages/ProfilePage';
 
 export const App: React.FC = () => {
   return (
@@ -37,6 +38,7 @@ export const App: React.FC = () => {
               <Route path="/yapay-zeka-analiz" element={<AiAnalysisPage />} />
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/rehber" element={<GlossaryGuidePage />} />
+              <Route path="/profile" element={<ProfilePage />} />
 
               {/* Budget & Asset: Standard Users & Super Admin */}
               <Route

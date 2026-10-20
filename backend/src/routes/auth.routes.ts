@@ -13,6 +13,7 @@ router.post('/login', authRateLimiter, validate(loginSchema), logAudit('READ', '
 router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', authenticateToken, authController.me);
+router.delete('/me', authenticateToken, logAudit('DELETE', 'UserAccount'), authController.deleteAccount);
 router.post('/accept-disclaimer', authenticateToken, logAudit('UPDATE', 'UserDisclaimer'), authController.acceptDisclaimer);
 
 router.post('/login/verify-2fa', authRateLimiter, logAudit('READ', 'UserAuth2FA'), authController.verify2FALogin);
